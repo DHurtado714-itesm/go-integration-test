@@ -3,3 +3,6 @@ docker-ratelimit:
 
 test-ratelimit:
 	go test ./ratelimit
+
+test-calculator:
+	go test ./calculator
