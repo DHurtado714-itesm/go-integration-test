@@ -8,25 +8,33 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/dreamsofcode-io/testcontainers/ratelimit"
 )
 
-func loadClient() (*redis.Client, error) {
-	opts, err := redis.ParseURL("redis://localhost:6379")
-	if err != nil {
-		return nil, err
-	}
-
-	return redis.NewClient(opts), nil
-}
-
 func TestRateLimiter(t *testing.T) {
 	ctx := context.Background()
 
-	client, err := loadClient()
+	req := testcontainers.ContainerRequest{
+		Image: "redis:7.2",
+		ExposedPorts: []string{"6379/tcp"},
+		WaitingFor: wait.ForLog("Ready to accept connections"),
+	}
+
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started: true,
+	})
 	assert.NoError(t, err)
 
+	endpoint, err := container.Endpoint(ctx, "")
+	assert.NoError(t, err)
+
+	client := redis.NewClient(&redis.Options{
+		Addr: endpoint,
+	})
 	limiter := ratelimit.New(client, 3, time.Minute)
 
 	ip := "192.168.1.54"
